@@ -4,7 +4,6 @@
 // Automatically generate Maxpat that finds the right abc_lib objet depending on the amount of desired channels
 // abclibrary | Alain Bonardi, Paul Goutmann, David Fierro & Adrien Zanni © 2019 - 2024 CICM | University Paris 8
 
-
 var wrapper = wrapper || {};
 wrapper.numobjects = -1;
 wrapper.theObjects = new Array(100);
@@ -16,17 +15,23 @@ cleanup();
 patching();
 
 function patching() {
+	//Constants:
+	var baseAmbisonicOrder = 1;
+	var maxAmbisonicOrder = 7;
+
+	//------------------------
 	var args = jsarguments;
 	var jsobjectname = args[0];
-	var order = 1;
+	var order = baseAmbisonicOrder;
 	if (typeof args[1] === 'number' && args[1] != 0) order = args[1];//Max puts a zero when there are no arguments
+	if (order > maxAmbisonicOrder) order = maxAmbisonicOrder;
 	var patcherName = this.patcher.name;
 	var speakers = order * 2 + 2;
 	var stereo = false;
 	var dimensions = "2d";
 	var sources = 1;//To transform the encoder to multiencoder
 	var mode = "fx";//fx or syn
-
+	var finalchannels;//variable to save the number of channels of the MC objects, if the user inputs instances or order instead of channels it will still work and we will save the value on this variable.
 	for (var i = 1; i < args.length; i++) {
 		if (args[i] == "@speakers" || args[i] == "@spk") {
 			speakers = args[i + 1];
@@ -86,14 +91,20 @@ function patching() {
 		} else {
 			objectToInstantiate = "abc_" + dimensions + "_" + mode + "_grain" + order + "~";
 		}
-	} else if (patcherName == 'abc.hoa.delays~' || patcherName == 'abc.hoa.delays') {
-		if (patcherName == 'abc.hoa.delays') withUI = true;
+	} else if (patcherName == 'abc.hoa.delay~' || patcherName == 'abc.hoa.delay') {
+		if (patcherName == 'abc.hoa.delay') withUI = true;
 		if (mode == "fx") {
 			objectToInstantiate = "abc_" + "delay" + order + "~";
 		} else if (mode == "syn") {
 			objectToInstantiate = "abc_" + dimensions + "_" + mode + "_delay" + order + "~";
-		} else {//chain
-			objectToInstantiate = "abc_" + "delaychain" + order + "~";
+		}
+	} else if (patcherName == 'abc.mc.delay~' || patcherName == 'abc.mc.delay') {
+		if (patcherName == 'abc.mc.delay') withUI = true;
+		if (mode == "fx") {
+			objectToInstantiate = "abc_" + "delay" + order + "~";
+		} else if (mode == "chain") {
+			if (order == 1) order = 2;
+			objectToInstantiate = "abc_delaychain" + order + "~";
 		}
 	} else if (patcherName == 'abc.hoa.mirror~' || patcherName == 'abc.hoa.mirror') {
 		if (patcherName == 'abc.hoa.mirror') withUI = true;
@@ -136,6 +147,7 @@ function patching() {
 		if (patcherName == 'abc.mc.addsynth') withUI = true;
 		if (instances) {
 			objectToInstantiate = "abc_" + "addsynth" + instances + "~";
+			finalchannels = instances;
 		} else {
 			objectToInstantiate = "abc_" + "addsynth" + order + "~";
 		}
@@ -143,10 +155,13 @@ function patching() {
 		if (patcherName == 'abc.mc.busselect') withUI = true;
 		if (channels) {
 			objectToInstantiate = "abc_" + "busselect" + channels + "~";
+			finalchannels = channels;
 		} else if (instances) {
 			objectToInstantiate = "abc_" + "busselect" + instances + "~";
+			finalchannels = instances;
 		} else {
 			objectToInstantiate = "abc_" + "busselect" + order + "~";
+			finalchannels = order;
 		}
 	} else if (patcherName == 'abc.audiotester~' || patcherName == 'abc.audiotester') {
 		if (patcherName == 'abc.audiotester') withUI = true;
@@ -155,19 +170,25 @@ function patching() {
 		if (patcherName == 'abc.mc.busmult') withUI = true;
 		if (channels) {
 			objectToInstantiate = "abc_" + "busmult" + channels + "~";
+			finalchannels = channels;
 		} else if (instances) {
 			objectToInstantiate = "abc_" + "busmult" + instances + "~";
+			finalchannels = instances;
 		} else {
 			objectToInstantiate = "abc_" + "busmult" + order + "~";
+			finalchannels = order;
 		}
 	} else if (patcherName == 'abc.mc.busplus~' || patcherName == 'abc.mc.busplus') {
 		if (patcherName == 'abc.mc.busplus') withUI = true;
 		if (channels) {
 			objectToInstantiate = "abc_" + "busplus" + channels + "~";
+			finalchannels = channels;
 		} else if (instances) {
 			objectToInstantiate = "abc_" + "busplus" + instances + "~";
+			finalchannels = instances;
 		} else {
 			objectToInstantiate = "abc_" + "busplus" + order + "~";
+			finalchannels = order;
 		}
 	} else if (patcherName == 'abc.cartopol~' || patcherName == 'abc.cartopol') {
 		if (patcherName == 'abc.cartopol') withUI = true;
@@ -176,19 +197,25 @@ function patching() {
 		if (patcherName == 'abc.mc.chopan') withUI = true;
 		if (channels) {
 			objectToInstantiate = "abc_" + "chopan" + channels + "~";
+			finalchannels = channels;
 		} else if (instances) {
 			objectToInstantiate = "abc_" + "chopan" + instances + "~";
+			finalchannels = instances;
 		} else {
 			objectToInstantiate = "abc_" + "chopan" + order + "~";
+			finalchannels = order;
 		}
 	} else if (patcherName == 'abc.mc.cosrandenv~' || patcherName == 'abc.mc.cosrandenv') {
 		if (patcherName == 'abc.mc.cosrandenv') withUI = true;
 		if (channels) {
 			objectToInstantiate = "abc_" + "cosrandenv" + channels + "~";
+			finalchannels = channels;
 		} else if (instances) {
 			objectToInstantiate = "abc_" + "cosrandenv" + instances + "~";
+			finalchannels = instances;
 		} else {
 			objectToInstantiate = "abc_" + "cosrandenv" + order + "~";
+			finalchannels = order;
 		}
 	} else if (patcherName == 'abc.drops~' || patcherName == 'abc.drops') {
 		if (patcherName == 'abc.drops') withUI = true;
@@ -200,28 +227,37 @@ function patching() {
 		if (patcherName == 'abc.mc.flanger') withUI = true;
 		if (channels) {
 			objectToInstantiate = "abc_" + "flanger" + channels + "~";
+			finalchannels = channels;
 		} else if (instances) {
 			objectToInstantiate = "abc_" + "flanger" + instances + "~";
+			finalchannels = instances;
 		} else {
 			objectToInstantiate = "abc_" + "flanger" + order + "~";
+			finalchannels = order;
 		}
 	} else if (patcherName == 'abc.mc.freqshift~' || patcherName == 'abc.mc.freqshift') {
 		if (patcherName == 'abc.mc.freqshift') withUI = true;
 		if (channels) {
 			objectToInstantiate = "abc_" + "freqshift" + channels + "~";
+			finalchannels = channels;
 		} else if (instances) {
 			objectToInstantiate = "abc_" + "freqshift" + instances + "~";
+			finalchannels = instances;
 		} else {
 			objectToInstantiate = "abc_" + "freqshift" + order + "~";
+			finalchannels = order;
 		}
 	} else if (patcherName == 'abc.mc.gain~' || patcherName == 'abc.mc.gain') {
 		if (patcherName == 'abc.mc.gain') withUI = true;
 		if (channels) {
 			objectToInstantiate = "abc_" + "gain" + channels + "~";
+			finalchannels = channels;
 		} else if (instances) {
 			objectToInstantiate = "abc_" + "gain" + instances + "~";
+			finalchannels = instances;
 		} else {
 			objectToInstantiate = "abc_" + "gain" + order + "~";
+			finalchannels = order;
 		}
 	} else if (patcherName == 'abc.generator~' || patcherName == 'abc.generator') {
 		if (patcherName == 'abc.generator') withUI = true;
@@ -230,42 +266,54 @@ function patching() {
 		if (patcherName == 'abc.mc.harmo') withUI = true;
 		if (channels) {
 			objectToInstantiate = "abc_" + "harmo" + channels + "~";
+			finalchannels = channels;
 		} else if (instances) {
 			objectToInstantiate = "abc_" + "harmo" + instances + "~";
+			finalchannels = instances;
 		} else {
 			objectToInstantiate = "abc_" + "harmo" + order + "~";
+			finalchannels = order;
 		}
 	} else if (patcherName == 'abc.jupiterbank~' || patcherName == 'abc.jupiterbank') {
 		if (patcherName == 'abc.jupiterbank') withUI = true;
 		if (channels) {
 			objectToInstantiate = "abc_" + "jupiterbank" + channels + "~";
+			finalchannels = channels;
 		} else if (instances) {
 			objectToInstantiate = "abc_" + "jupiterbank" + instances + "~";
+			finalchannels = instances;
 		} else {
 			if (order == 1) {
 				objectToInstantiate = "abc_" + "jupiterbank~";
 			} else {
 				objectToInstantiate = "abc_" + "jupiterbank" + order + "~";
 			}
+			finalchannels = order;
 		}
 	} else if (patcherName == 'abc.mc.linrandenv~' || patcherName == 'abc.mc.linrandenv~') {
 		if (patcherName == 'abc.mc.linrandenv') withUI = true;
 		if (channels) {
 			objectToInstantiate = "abc_" + "linrandenv" + channels + "~";
+			finalchannels = channels;
 		} else if (instances) {
 			objectToInstantiate = "abc_" + "linrandenv" + instances + "~";
+			finalchannels = instances;
 		} else {
 			objectToInstantiate = "abc_" + "linrandenv" + order + "~";
+			finalchannels = order;
 		}
 	} else if (patcherName == 'abc.mc.matrix~' || patcherName == 'abc.mc.matrix') {
 		if (patcherName == 'abc.mc.matrix') withUI = true;
 		if (channels) {
 			objectToInstantiate = "abc_" + "matrix" + channels + "~";
+			finalchannels = channels;
 		} else if (instances) {
 			objectToInstantiate = "abc_" + "matrix" + instances + "~";
+			finalchannels = instances;
 		} else {
 			if (order == 1) order = 2;
 			objectToInstantiate = "abc_" + "matrix" + order + "~";
+			finalchannels = order;
 		}
 	} else if (patcherName == 'abc.mult2pi~' || patcherName == 'abc.mult2pi~') {
 		if (patcherName == 'abc.mult2pi') withUI = true;
@@ -274,10 +322,13 @@ function patching() {
 		if (patcherName == 'abc.mc.multinoise') withUI = true;
 		if (channels) {
 			objectToInstantiate = "abc_" + "multinoise" + channels + "~";
+			finalchannels = channels;
 		} else if (instances) {
 			objectToInstantiate = "abc_" + "multinoise" + instances + "~";
+			finalchannels = instances;
 		} else {
 			objectToInstantiate = "abc_" + "multinoise" + order + "~";
+			finalchannels = order;
 		}
 	} else if (patcherName == 'abc.peakamp~' || patcherName == 'abc.peakamp') {
 		if (patcherName == 'abc.peakamp') withUI = true;
@@ -292,23 +343,29 @@ function patching() {
 		if (patcherName == 'abc.puckettespaf') withUI = true;
 		if (channels) {
 			objectToInstantiate = "abc_" + "puckettespaf" + channels + "~";
+			finalchannels = channels;
 		} else if (instances) {
 			objectToInstantiate = "abc_" + "puckettespaf" + instances + "~";
+			finalchannels = instances;
 		} else {
 			if (order == 1) {
 				objectToInstantiate = "abc_" + "puckettespaf~";
 			} else {
 				objectToInstantiate = "abc_" + "puckettespaf" + order + "~";
 			}
+			finalchannels = order;
 		}
 	} else if (patcherName == 'abc.mc.pulsedenv2synth~' || patcherName == 'abc.mc.pulsedenv2synth') {
 		if (patcherName == 'abc.mc.pulsedenv2synth') withUI = true;
 		if (channels) {
 			objectToInstantiate = "abc_" + "pulsedenv2synth" + channels + "~";
+			finalchannels = channels;
 		} else if (instances) {
 			objectToInstantiate = "abc_" + "pulsedenv2synth" + instances + "~";
+			finalchannels = instances;
 		} else {
 			objectToInstantiate = "abc_" + "pulsedenv2synth" + order + "~";
+			finalchannels = order;
 		}
 	} else if (patcherName == 'abc.rev4~' || patcherName == 'abc.rev4~') {
 		if (patcherName == 'abc.rev4') withUI = true;
@@ -354,10 +411,13 @@ function patching() {
 		if (patcherName == 'abc.mc.substractsynth') withUI = true;
 		if (channels) {
 			objectToInstantiate = "abc_" + "substractsynth" + channels + "~";
+			finalchannels = channels;
 		} else if (instances) {
 			objectToInstantiate = "abc_" + "substractsynth" + instances + "~";
+			finalchannels = instances;
 		} else {
 			objectToInstantiate = "abc_" + "substractsynth" + order + "~";
+			finalchannels = order;
 		}
 	} else if (patcherName == 'abc.polarvariablecircle~' || patcherName == 'abc.polarvariablecircle') {
 		if (patcherName == 'abc.polarvariablecircle') withUI = true;
@@ -396,7 +456,31 @@ function patching() {
 		}
 		connectobject(5, 0, 4, 0);//connect mc.pack~ to outlet
 	}
+
+	//Special cases : Map and Buses:
+	if (patcherName == 'abc.hoa.map~' || patcherName == 'abc.hoa.map') {//n buses of 3 channels
+		disconnectobject(2, 0, 3, 0);//disconnect the trigger output from the unpack
+		objectToInstantiate = "mc.combine~ " + sources;
+		addobject(objectToInstantiate, 140, 120);//add mc.combine~//index = 6
+		connectobject(2, 0, 6, 0);//connect trigger to mc.combine~
+		for (k = 0; k < sources - 1; k++) {//add new inlets
+			addobject("inlet", 60 + 40 * k, 60);
+			connectobject(7 + k, 0, 6, 1 + k);//connect inlets to mc.combine~
+		}
+		connectobject(6, 0, 3, 0);//connect combine to unpack~
+	}
+	if (patcherName == 'abc.mc.busselect~' || patcherName == 'abc.mc.busselect' || patcherName == 'abc.mc.busmult~' || patcherName == 'abc.mc.busmult'|| patcherName == 'abc.mc.busplus~' || patcherName == 'abc.mc.busplus') {//2 buses of n channels
+		disconnectobject(2, 0, 3, 0);//disconnect the trigger output from the unpack
+		objectToInstantiate = "mc.combine~ " + 2;
+		addobject(objectToInstantiate, 140, 120);//add mc.combine~//index = 6
+		connectobject(2, 0, 6, 0);//connect trigger to mc.combine~
+		addobject("inlet", 100, 60);//add new inlet
+		connectobject(7, 0, 6, 1);//connect inlets to mc.combine~
+		connectobject(6, 0, 3, 0);//connect combine to unpack~
+	}
+	//-----------------------------------------------------
 }
+
 function anything() {
 }
 function cleanup() {
@@ -405,7 +489,7 @@ function cleanup() {
 		wrapper.numobjects--;
 	}
 }
-function addobject() {
+function addobject() {//name of object to instantiate,x,y
 	wrapper.numobjects++;
 	actualobject = patcher.newdefault(arguments[1], arguments[2], arguments[0]);
 	actualobject.varname = 'abc_w_' + wrapper.numobjects;
@@ -426,4 +510,7 @@ function inletsoutlets() {
 }
 function connectobject() {//object, outlet, object, inlet// Need to give the index on the patch(the order in which it was added), not the GUI oindex!
 	patcher.connect(wrapper.theObjects[arguments[0]], arguments[1], wrapper.theObjects[arguments[2]], arguments[3]);
+}
+function disconnectobject() {//object, outlet, object, inlet// Need to give the index on the patch(the order in which it was added), not the GUI oindex!
+	patcher.disconnect(wrapper.theObjects[arguments[0]], arguments[1], wrapper.theObjects[arguments[2]], arguments[3]);
 }
