@@ -1,5 +1,5 @@
 # abclib
-## 20 years of research, teaching and creation in mixed music using Faust language
+## The abc wrapper
 ### CICM (Centre de recherches Informatique et Création Musicale) - University Paris 8
 ### http://cicm.univ-paris8.fr/
 
