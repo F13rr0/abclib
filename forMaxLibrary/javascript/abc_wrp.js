@@ -4,12 +4,18 @@
 // Automatically generate Maxpat that finds the right abc_lib objet depending on the amount of desired channels
 // abclibrary | Alain Bonardi, Paul Goutmann, David Fierro & Adrien Zanni © 2019 - 2024 CICM | University Paris 8
 
+
+//Ajouter un array pour garder toutes les autres attributes et les placer dans l'objet faust comme ça Ex:'@functiontype 4'
+
+
+
 var wrapper = wrapper || {};
 wrapper.numobjects = -1;
 wrapper.theObjects = new Array(100);
 var objectToInstantiate = "";
 var actualobject;
 var withUI = false;
+var extraAttributes = new Array(100);
 
 cleanup();
 patching();
@@ -63,6 +69,8 @@ function patching() {
 		if (args[i] == "@channels" || args[i] == "@chan" || args[i] == "@chans") {
 			var channels = args[i + 1];
 		}
+		//Extra attributes of the 'abc' objects:
+		extraAttributes[i] = args[i];
 	}
 	//List of ABC sweet objects:
 	if (patcherName == 'abc.hoa.decoder~' || patcherName == 'abc.hoa.decoder') {
@@ -424,59 +432,81 @@ function patching() {
 		objectToInstantiate = "abc_" + dimensions + "_polarvariablecircle~";
 	}
 	//Attention :  the order of placing the objects here is for the GUI, to connect them we use the order in which they where added to the patch
+	//for(p = 0; p < extraAttributes.length;p++){
+	//	objectToInstantiate += " " + extraAttributes[p];
+	//}
 	addobjectauto(objectToInstantiate, 3);//Object#0(for connection)//the abc object
-	if (stereo) {
-		wrapper.theObjects[wrapper.numobjects].message('stereo', 1)
-	}
+	//if (stereo) {
+	//	wrapper.theObjects[wrapper.numobjects].message('stereo', 1)
+	//}
 	objectToInstantiate = "inlet";
 	addobjectauto(objectToInstantiate, 0);//Object#1(for connection)//
-	objectToInstantiate = "t signal s	";
+	objectToInstantiate = "t signal l";
 	addobjectauto(objectToInstantiate, 1);//Object#2(for connection)//
 	connectobject(1, 0, 2, 0);//connect inlet to trigger
-	connectobject(2, 1, 0, 0);//connect trigger(data) to abc object
+	
+
+	objectToInstantiate = "t b l ";
+	addobject(objectToInstantiate, 130, 180);//Object#3(for connection)//
+	connectobject(2, 1, 3, 0);//connect trigger right to new trigger input
+	objectToInstantiate = "message";
+	addobject(objectToInstantiate, 130, 210);//Object#4(for connection)//
+	
+
+	
 	if (inletsoutlets(wrapper.theObjects[0])[0] > 1) {
 		objectToInstantiate = "mc.unpack~ " + inletsoutlets(wrapper.theObjects[0])[0];
-		addobjectauto(objectToInstantiate, 2);//Object#3(for connection)//
+		addobjectauto(objectToInstantiate, 2);//Object#5(for connection)//
 		//connect mc.unpack~ to abc object:
 		for (d = 0; d < inletsoutlets(wrapper.theObjects[0])[0]; d++) {
-			connectobject(3, d, 0, d);//connect mc.unpack~ to abc object
+			connectobject(5, d, 0, d);//connect mc.unpack~ to abc object
 		}
 	} else {//The ABC object only has 1 input (like the encoder~)
 		wrapper.numobjects++;
 		connectobject(2, 0, 0, 0);//connect trigger(signal) to abc object
 	}
-	connectobject(2, 0, 3, 0);//connect trigger unpack~
+	connectobject(2, 0, 5, 0);//connect trigger unpack~
 	objectToInstantiate = "outlet";
-	addobjectauto(objectToInstantiate, 5);//Object#4(for connection)//
+	addobjectauto(objectToInstantiate, 5);//Object#6(for connection)//
 	if (inletsoutlets(wrapper.theObjects[0])[1] > 1) {
 		objectToInstantiate = "mc.pack~ " + (inletsoutlets(wrapper.theObjects[0])[1] - 1);
-		addobjectauto(objectToInstantiate, 4);//Object#5(for connection)//
+		addobjectauto(objectToInstantiate, 4);//Object#7(for connection)//
 		for (d = 0; d < inletsoutlets(wrapper.theObjects[0])[1] - 1; d++) {
-			connectobject(0, d, 5, d);//connect abc object to mc.pack~
+			connectobject(0, d, 7, d);//connect abc object to mc.pack~
 		}
-		connectobject(5, 0, 4, 0);//connect mc.pack~ to outlet
+		connectobject(7, 0, 6, 0);//connect mc.pack~ to outlet
 	}
+
+	objectToInstantiate = "route multichannelsignal";
+	addobject(objectToInstantiate, 130, 240);//Object#8(for connection)//
+	connectobject(3, 0, 4, 0);//connect new trigger to message
+	connectobject(3, 1, 4, 1);//connect new trigger to message
+	connectobject(4, 0, 8, 0);//connect message to route
+
+	connectobject(8, 1, 0, 0);//connect route to abc object
+
+
 
 	//Special cases : Map and Buses:
 	if (patcherName == 'abc.hoa.map~' || patcherName == 'abc.hoa.map') {//n buses of 3 channels
-		disconnectobject(2, 0, 3, 0);//disconnect the trigger output from the unpack
+		disconnectobject(2, 0, 5, 0);//disconnect the trigger output from the unpack
 		objectToInstantiate = "mc.combine~ " + sources;
-		addobject(objectToInstantiate, 140, 120);//add mc.combine~//index = 6
-		connectobject(2, 0, 6, 0);//connect trigger to mc.combine~
+		addobject(objectToInstantiate, 140, 120);//add mc.combine~//index = 9
+		connectobject(2, 0, 9, 0);//connect trigger to mc.combine~
 		for (k = 0; k < sources - 1; k++) {//add new inlets
 			addobject("inlet", 60 + 40 * k, 60);
-			connectobject(7 + k, 0, 6, 1 + k);//connect inlets to mc.combine~
+			connectobject(10 + k, 0, 9, 1 + k);//connect inlets to mc.combine~
 		}
-		connectobject(6, 0, 3, 0);//connect combine to unpack~
+		connectobject(9, 0, 5, 0);//connect combine to unpack~
 	}
 	if (patcherName == 'abc.mc.busselect~' || patcherName == 'abc.mc.busselect' || patcherName == 'abc.mc.busmult~' || patcherName == 'abc.mc.busmult'|| patcherName == 'abc.mc.busplus~' || patcherName == 'abc.mc.busplus') {//2 buses of n channels
-		disconnectobject(2, 0, 3, 0);//disconnect the trigger output from the unpack
+		disconnectobject(2, 0, 5, 0);//disconnect the trigger output from the unpack
 		objectToInstantiate = "mc.combine~ " + 2;
-		addobject(objectToInstantiate, 140, 120);//add mc.combine~//index = 6
-		connectobject(2, 0, 6, 0);//connect trigger to mc.combine~
-		addobject("inlet", 100, 60);//add new inlet
-		connectobject(7, 0, 6, 1);//connect inlets to mc.combine~
-		connectobject(6, 0, 3, 0);//connect combine to unpack~
+		addobject(objectToInstantiate, 140, 120);//add mc.combine~//index = 9
+		connectobject(2, 0, 9, 0);//connect trigger to mc.combine~
+		addobject("inlet", 100, 60);//add new inlet//index = 10
+		connectobject(10, 0, 9, 1);//connect inlets to mc.combine~
+		connectobject(9, 0, 5, 0);//connect combine to unpack~
 	}
 	//-----------------------------------------------------
 }
